@@ -12,3 +12,8 @@ Make sure the resolution and framerate setting in main.cpp is compatible with yo
 
 # Screenshot
 ![image](https://raw.githubusercontent.com/js-john/Blackmagic-DeckLink-Opencv/master/screenshot.jpg)
+
+# Platform
+Tested on Macbook Pro 2014 using BlackMagicDesign Ultrastudio Mini Recorder.
+OS: macOS Catalina 10.15
+![image](https://github.com/js-john/Blackmagic-DeckLink-Opencv/blob/master/IMG_0428.jpg?raw=true)
