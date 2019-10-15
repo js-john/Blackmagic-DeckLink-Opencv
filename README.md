@@ -11,4 +11,4 @@ Check whether the "CoreFoundation.framework" is in the "xcode project > Build Ph
 Make sure the resolution and framerate setting in main.cpp is compatible with your DeckLink capture card.
 
 # Screenshot
-
+![image](https://raw.githubusercontent.com/js-john/Blackmagic-DeckLink-Opencv/master/screenshot.jpg)
