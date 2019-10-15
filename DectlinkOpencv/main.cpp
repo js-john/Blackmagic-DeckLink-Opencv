@@ -16,11 +16,13 @@ using namespace std;
 int main(int argc, const char * argv[]) {
     
     int width = 1920, height = 1080;
-    DeckLinkUtil *util = new DeckLinkUtil(0);
-    util -> startCaptureWithDisplayMode(width, height, 30,"HDMI");
+    float framerate = 30.0;
+    string input = "HDMI";
+    DeckLinkUtil util(0);
+    util.startCaptureWithDisplayMode(width, height, framerate, input);
 
     while (cv::waitKey(1)) {
-        cv::Mat frame = util -> capture();
+        cv::Mat frame = util.capture();
         if (!frame.empty()) {
              cv::imshow("monitor", frame);
         }
