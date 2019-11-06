@@ -15,12 +15,13 @@ macOS:
 Open Xcode and click the "Build and Run" button.  
 Check whether the "CoreFoundation.framework" is in the "xcode project > Build Phases > Link Binary With Librares" list in case of Build Failed.
 
-linux:
+linux:  
 cd DectlinkOpencv
 make
 
-# Config
-Make sure the resolution and framerate setting in main.cpp is compatible with your DeckLink capture card.
+# Run
+Select a Compatible display mode or input 'x' to use auto display mode detection (if support).
+press "ESC" to exit.
 
 # Screenshot
 ![image](https://raw.githubusercontent.com/js-john/Blackmagic-DeckLink-Opencv/master/screenshot.jpg)
