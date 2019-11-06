@@ -14,15 +14,32 @@
 using namespace std;
 
 int main(int argc, const char * argv[]) {
+    DeckLinkUtil *util = new DeckLinkUtil();
+    cout << "[x]Auto Detection" << endl;
+    cout << "Please select a display mode:";
+    string selection;
+    cin >> selection;
+    if (!(util -> supportAutoVideoModeDetection)) {
+        cout << "Your device does not support auto display mode detection!" << endl;
+    }
+    if (selection.compare("x") == 0) {
+        if (util -> startCapture() < 0) {
+            cout << "error!" << endl;
+            exit(0);
+        }
+    } else {
+        if (util -> startCaptureWithDisplayMode(atoi(selection.data())) < 0) {
+            cout << "error!" << endl;
+            exit(0);
+        }
+    }
     
-    int width = 1920, height = 1080;
-    float framerate = 30.0;
-    string input = "HDMI";
-    DeckLinkUtil util(0);
-    util.startCaptureWithDisplayMode(width, height, framerate, input);
-
-    while (cv::waitKey(1)) {
-        cv::Mat frame = util.capture();
+    cout << "press ESC to exit" << endl;
+    while (true) {
+        if (cv::waitKey(30) == 27) {
+            break;
+        }
+        cv::Mat frame = util -> capture();
         if (!frame.empty()) {
              cv::imshow("monitor", frame);
         }

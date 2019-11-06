@@ -9,19 +9,26 @@
 #ifndef DeckLinkUtil_hpp
 #define DeckLinkUtil_hpp
 
-#include "DeckLinkAPI.h"
+#include <DeckLinkAPI.h>
 #include <stdio.h>
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <opencv/highgui.h>
 #include <mutex>
 
+typedef int BMDCheckDisplayModeStatus;
+enum _BMDCheckDisplayModeStatus {
+   bmdCheckDisplayModeStatusNoSignal = -1,
+   bmdCheckDisplayModeStatusOK = 1,
+   bmdCheckDisplayModeStatusChecking = 0
+};
 
 class DeckLinkUtil: public IDeckLinkInputCallback {
 public:
-    DeckLinkUtil(int id);
+    DeckLinkUtil();
    
-    int startCaptureWithDisplayMode(int width, int height, float framerate, std::string port);
+    int startCaptureWithDisplayMode(int mode);
+    int startCapture();
     
     virtual HRESULT             VideoInputFormatChanged (/* in */ BMDVideoInputFormatChangedEvents notificationEvents, /* in */ IDeckLinkDisplayMode *newDisplayMode, /* in */ BMDDetectedVideoInputFormatFlags detectedSignalFlags);
     virtual HRESULT             VideoInputFrameArrived (/* in */ IDeckLinkVideoInputFrame* videoFrame, /* in */ IDeckLinkAudioInputPacket* audioPacket);
@@ -29,18 +36,19 @@ public:
     virtual ULONG               AddRef();
     virtual ULONG               Release();
     cv::Mat capture();
-    
-    int id;
-    bool ready = false;
+    bool supportAutoVideoModeDetection = false;
     
 private:
-    std::string cfstring2cstring(CFStringRef cfstring);
     std::vector<IDeckLinkDisplayMode *> displayModeList;
-    
+    IDeckLinkDisplayMode *selectedDisplayMode = NULL;
     IDeckLinkInput *input;
+    IDeckLink *instance;
+    IDeckLinkProfileAttributes *profileAttributes;
+    BMDCheckDisplayModeStatus displayModeCheckStatus = bmdCheckDisplayModeStatusNoSignal;
     IDeckLinkIterator *deckLinkIterator;
     cv::Mat frame;
-    std::mutex mtx;
+    std::mutex mtx, statusMtx;
+    
     
 };
 

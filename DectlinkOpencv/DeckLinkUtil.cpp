@@ -10,95 +10,128 @@
 using namespace std;
 
 
-DeckLinkUtil::DeckLinkUtil(int id) {
-    this -> id = id;
+DeckLinkUtil::DeckLinkUtil() {
     deckLinkIterator = CreateDeckLinkIteratorInstance();
-    IDeckLink *instance;
-    HRESULT result = deckLinkIterator -> Next(&instance);
-    cout << "deckLinkIterator -> Next(&instance) result: " << result << endl;
-    CFStringRef name;
+    deckLinkIterator -> Next(&instance);
+   
+    const char *name = (char *) malloc(sizeof(char) * 20);
+    if (!instance) {
+        cout << "Decklink Device offline!" << endl;
+        exit(0);
+    }
+    #ifdef __APPLE__
+            CFStringRef cfname;
+            instance -> GetDisplayName(&cfname);
+            name = CFStringGetCStringPtr(cfname, kCFStringEncodingUTF8);
+    #endif
+    
+#ifdef linux
     instance -> GetDisplayName(&name);
+#endif
+    printf("Device online: %s\n", name);
     void *tempInput = nullptr;
-    result = instance->QueryInterface(IID_IDeckLinkInput, &tempInput);
+    instance->QueryInterface(IID_IDeckLinkInput, &tempInput);
     input = (IDeckLinkInput *) tempInput;
     
     if (!input) {
-        cout << "DeckLink device offline!" << endl;
+        cout << "DeckLink device input error!" << endl;
         exit(0);
     }
     
     IDeckLinkDisplayModeIterator *displayModeIterator;
-    result = input -> GetDisplayModeIterator(&displayModeIterator);
+    input -> GetDisplayModeIterator(&displayModeIterator);
     IDeckLinkDisplayMode *displayMode;
     cout << "Supported display mode:" << endl;
+    int index = 0;
     while (displayModeIterator->Next(&displayMode) == S_OK) {
-        CFStringRef name;
-        displayMode -> GetName(&name);
-        cout << cfstring2cstring(name) << endl;
+        cout << "[" << index << "]";
+        const char *name = (char *) malloc(sizeof(char) * 20);
+#ifdef __APPLE__
+        CFStringRef cfname;
+        displayMode -> GetName(&cfname);
+        name = CFStringGetCStringPtr(cfname, kCFStringEncodingUTF8);
+#endif
+#ifdef linux
+       displayMode -> GetName(&name);
+#endif
+        printf("%s\n", name);
+        index++;
         displayModeList.push_back(displayMode);
     }
+    void *tempProfileAttributes = nullptr;
+    instance -> QueryInterface(IID_IDeckLinkProfileAttributes, &tempProfileAttributes);
+    profileAttributes = (IDeckLinkProfileAttributes *) tempProfileAttributes;
+    if (!profileAttributes) {
+        cout << "Get ProfileAttributes Failed!" << endl;
+    } else {
+        profileAttributes -> GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supportAutoVideoModeDetection);
+    }
+    
 }
 
-int DeckLinkUtil::startCaptureWithDisplayMode(int width, int height, float framerate, string port) {
+int DeckLinkUtil::startCapture() {
+    if (!input) {
+       cout << "IDeckLinkInput NULL !" << endl;
+       return -1;
+    }
+    
+    input -> SetCallback(this);
+    input -> EnableVideoInput(displayModeList[0] -> GetDisplayMode(), bmdFormat8BitYUV, bmdVideoInputEnableFormatDetection);
+    input -> StartStreams();
+
+    return 0;
+}
+
+int DeckLinkUtil::startCaptureWithDisplayMode(int mode) {
     if (!input) {
         cout << "IDeckLinkInput NULL !" << endl;
         return -1;
     }
-    IDeckLinkDisplayMode *displayMode = nullptr;
-    for (int i = 0; i < displayModeList.size(); i++) {
-        displayMode = displayModeList[i];
-        long mode_width = displayMode -> GetWidth(), mode_height = displayMode -> GetHeight();
-        BMDTimeValue frameDuration = -1, timeScale = -1;
-        displayMode -> GetFrameRate(&frameDuration, &timeScale);
-        if (mode_width == width && mode_height == height && (int)framerate * 1000 == timeScale) {
-            break;
-        } else {
-            displayMode = nullptr;
-        }
-    }
-    
-    bool supported = false;
-    if (displayMode) {
-        BMDVideoConnection connection = 0;
-           if (port.compare("HDMI") == 0) {
-               connection = bmdVideoConnectionHDMI;
-           } else if (port.compare("SDI") == 0) {
-               connection = bmdVideoConnectionSDI;
-           }
-           input -> DoesSupportVideoMode(connection, displayMode -> GetDisplayMode(), bmdFormat8BitYUV, 0, &supported);
-    }
-    
-    if (!supported) {
-        cout << "Unsupported display mode：" << width << "x" << height << "@" << framerate << endl;
+    if (mode < 0 || mode >= displayModeList.size()) {
         return -1;
-    } else {
-        input -> EnableVideoInput(displayMode -> GetDisplayMode(), bmdFormat8BitYUV, bmdVideoInputFlagDefault);
     }
+    IDeckLinkDisplayMode *displayMode = displayModeList[mode];
     
+    input -> EnableVideoInput(displayMode -> GetDisplayMode(), bmdFormat8BitYUV, bmdVideoInputFlagDefault);
     input -> SetCallback(this);
     input -> StartStreams();
     return 0;
 }
 
-HRESULT        DeckLinkUtil::VideoInputFormatChanged (/* in */ BMDVideoInputFormatChangedEvents notificationEvents, /* in */ IDeckLinkDisplayMode *newMode, /* in */ BMDDetectedVideoInputFormatFlags detectedSignalFlags)
+
+
+HRESULT        DeckLinkUtil::VideoInputFormatChanged (/* in */ BMDVideoInputFormatChangedEvents notificationEvents, /* in */ IDeckLinkDisplayMode *newDisplayMode, /* in */ BMDDetectedVideoInputFormatFlags detectedSignalFlags)
 {
-    cout << "VideoInputFormatChanged callback" << endl;
+    const char *name = (char *) malloc(sizeof(char) * 20);
+#ifdef __APPLE__
+    CFStringRef cfname;
+    newDisplayMode -> GetName(&cfname);
+    name = CFStringGetCStringPtr(cfname, kCFStringEncodingUTF8);
+#endif
+#ifdef linux
+    newDisplayMode -> GetName(&name);
+#endif
+    printf("Video Input Format Changed: %s", name);
+    input -> PauseStreams();
+    input -> EnableVideoInput(newDisplayMode -> GetDisplayMode(), bmdFormat8BitYUV, bmdVideoInputEnableFormatDetection);
+    input -> FlushStreams();
+    input -> StartStreams();
     return S_OK;
 }
 
 HRESULT     DeckLinkUtil::VideoInputFrameArrived (/* in */ IDeckLinkVideoInputFrame* videoFrame, /* in */ IDeckLinkAudioInputPacket* audioPacket)
 {
-    if (mtx.try_lock()) {
-        void *data;
-        videoFrame -> GetBytes(&data);
-        const int width = (int) videoFrame -> GetWidth();
-        const int height = (int) videoFrame -> GetHeight();
-        cv::Mat uyvy(height, width, CV_8UC2, data);
-        cv::Mat image(height, width, CV_8UC3);
-        cv::cvtColor(uyvy, image, cv::COLOR_YUV2BGR_UYVY);
-        frame = image.clone();
-        mtx.unlock();
-    }          
+        if (mtx.try_lock()) {
+            void *data;
+            videoFrame -> GetBytes(&data);
+            const int width = (int) videoFrame -> GetWidth();
+            const int height = (int) videoFrame -> GetHeight();
+            cv::Mat uyvy(height, width, CV_8UC2, data);
+            cv::Mat image(height, width, CV_8UC3);
+            cv::cvtColor(uyvy, image, cv::COLOR_YUV2BGR_UYVY);
+            frame = image.clone();
+            mtx.unlock();
+        }
     return S_OK;
 }
 
@@ -140,15 +173,6 @@ ULONG       DeckLinkUtil::Release (void)
     return 0;
 }
 
-
-std::string DeckLinkUtil::cfstring2cstring(CFStringRef cfstring) {
-    const CFIndex kCStringSize = 128;
-    char temporaryCString[kCStringSize];
-    bzero(temporaryCString,kCStringSize);
-    CFStringGetCString(cfstring, temporaryCString, kCStringSize, kCFStringEncodingUTF8);
-    std::string *bar = new std::string(temporaryCString);
-    return *bar;
-}
 
 cv::Mat DeckLinkUtil::capture() {
     cv::Mat newFrame;
