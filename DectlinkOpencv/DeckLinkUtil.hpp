@@ -25,7 +25,7 @@ enum _BMDCheckDisplayModeStatus {
 
 class DeckLinkUtil: public IDeckLinkInputCallback {
 public:
-    DeckLinkUtil();
+    DeckLinkUtil(int id);
    
     int startCaptureWithDisplayMode(int mode);
     int startCapture();

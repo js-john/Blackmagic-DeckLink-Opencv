@@ -10,63 +10,64 @@
 using namespace std;
 
 
-DeckLinkUtil::DeckLinkUtil() {
+DeckLinkUtil::DeckLinkUtil(int id) {
     deckLinkIterator = CreateDeckLinkIteratorInstance();
     deckLinkIterator -> Next(&instance);
-   
-    const char *name = (char *) malloc(sizeof(char) * 20);
-    if (!instance) {
-        cout << "Decklink Device offline!" << endl;
-        exit(0);
+    for (int i = 0; i < id; i++) {
+        deckLinkIterator -> Next(&instance);
     }
+        const char *name = (char *) malloc(sizeof(char) * 20);
+        if (!instance) {
+            cout << "Decklink Device offline!" << endl;
+            exit(0);
+        }
+        #ifdef __APPLE__
+                CFStringRef cfname;
+                instance -> GetDisplayName(&cfname);
+                name = CFStringGetCStringPtr(cfname, kCFStringEncodingUTF8);
+        #endif
+        
+    #ifdef linux
+        instance -> GetDisplayName(&name);
+    #endif
+        printf("Device online: %s\n", name);
+        void *tempInput = nullptr;
+        instance->QueryInterface(IID_IDeckLinkInput, &tempInput);
+        input = (IDeckLinkInput *) tempInput;
+        
+        if (!input) {
+            cout << "DeckLink device input error!" << endl;
+            exit(0);
+        }
+        
+        IDeckLinkDisplayModeIterator *displayModeIterator;
+        input -> GetDisplayModeIterator(&displayModeIterator);
+        IDeckLinkDisplayMode *displayMode;
+        cout << "Supported display mode:" << endl;
+        int index = 0;
+        while (displayModeIterator->Next(&displayMode) == S_OK) {
+            cout << "[" << index << "]";
+            const char *name = (char *) malloc(sizeof(char) * 20);
     #ifdef __APPLE__
             CFStringRef cfname;
-            instance -> GetDisplayName(&cfname);
+            displayMode -> GetName(&cfname);
             name = CFStringGetCStringPtr(cfname, kCFStringEncodingUTF8);
     #endif
-    
-#ifdef linux
-    instance -> GetDisplayName(&name);
-#endif
-    printf("Device online: %s\n", name);
-    void *tempInput = nullptr;
-    instance->QueryInterface(IID_IDeckLinkInput, &tempInput);
-    input = (IDeckLinkInput *) tempInput;
-    
-    if (!input) {
-        cout << "DeckLink device input error!" << endl;
-        exit(0);
-    }
-    
-    IDeckLinkDisplayModeIterator *displayModeIterator;
-    input -> GetDisplayModeIterator(&displayModeIterator);
-    IDeckLinkDisplayMode *displayMode;
-    cout << "Supported display mode:" << endl;
-    int index = 0;
-    while (displayModeIterator->Next(&displayMode) == S_OK) {
-        cout << "[" << index << "]";
-        const char *name = (char *) malloc(sizeof(char) * 20);
-#ifdef __APPLE__
-        CFStringRef cfname;
-        displayMode -> GetName(&cfname);
-        name = CFStringGetCStringPtr(cfname, kCFStringEncodingUTF8);
-#endif
-#ifdef linux
-       displayMode -> GetName(&name);
-#endif
-        printf("%s\n", name);
-        index++;
-        displayModeList.push_back(displayMode);
-    }
-    void *tempProfileAttributes = nullptr;
-    instance -> QueryInterface(IID_IDeckLinkProfileAttributes, &tempProfileAttributes);
-    profileAttributes = (IDeckLinkProfileAttributes *) tempProfileAttributes;
-    if (!profileAttributes) {
-        cout << "Get ProfileAttributes Failed!" << endl;
-    } else {
-        profileAttributes -> GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supportAutoVideoModeDetection);
-    }
-    
+    #ifdef linux
+           displayMode -> GetName(&name);
+    #endif
+            printf("%s\n", name);
+            index++;
+            displayModeList.push_back(displayMode);
+        }
+        void *tempProfileAttributes = nullptr;
+        instance -> QueryInterface(IID_IDeckLinkProfileAttributes, &tempProfileAttributes);
+        profileAttributes = (IDeckLinkProfileAttributes *) tempProfileAttributes;
+        if (!profileAttributes) {
+            cout << "Get ProfileAttributes Failed!" << endl;
+        } else {
+            profileAttributes -> GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supportAutoVideoModeDetection);
+        }
 }
 
 int DeckLinkUtil::startCapture() {
