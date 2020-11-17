@@ -30,7 +30,7 @@ DeckLinkUtil::DeckLinkUtil(int id) {
     #ifdef linux
         instance -> GetDisplayName(&name);
     #endif
-        printf("Device online: %s\n", name);
+    cout << "Device online: " << name << endl;
         void *tempInput = nullptr;
         instance->QueryInterface(IID_IDeckLinkInput, &tempInput);
         input = (IDeckLinkInput *) tempInput;
@@ -56,7 +56,7 @@ DeckLinkUtil::DeckLinkUtil(int id) {
     #ifdef linux
            displayMode -> GetName(&name);
     #endif
-            printf("%s\n", name);
+            cout << name << endl;
             index++;
             displayModeList.push_back(displayMode);
         }
@@ -112,7 +112,7 @@ HRESULT        DeckLinkUtil::VideoInputFormatChanged (/* in */ BMDVideoInputForm
 #ifdef linux
     newDisplayMode -> GetName(&name);
 #endif
-    printf("Video Input Format Changed: %s", name);
+    cout << "Video Input Format Changed: " << name << endl;
     input -> PauseStreams();
     input -> EnableVideoInput(newDisplayMode -> GetDisplayMode(), bmdFormat8BitYUV, bmdVideoInputEnableFormatDetection);
     input -> FlushStreams();
