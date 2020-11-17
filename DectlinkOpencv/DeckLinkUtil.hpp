@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include <opencv/highgui.h>
+#include <opencv2/highgui.hpp>
 #include <mutex>
 
 typedef int BMDCheckDisplayModeStatus;

@@ -14,7 +14,7 @@
 using namespace std;
 
 int main(int argc, const char * argv[]) {
-    DeckLinkUtil *util = new DeckLinkUtil();
+    DeckLinkUtil *util = new DeckLinkUtil(0);
     cout << "[x]Auto Detection" << endl;
     cout << "Please select a display mode:";
     string selection;
